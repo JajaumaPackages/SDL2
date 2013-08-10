@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.0
-Release:        1.rc3%{?dist}
+Release:        1.rc4%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -91,6 +91,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Sat Aug 10 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.0-1.rc4
+- Update to latest SDL2 (08.08.2013)
+
 * Tue Jul 30 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.0-1.rc3
 - Fix Licenses
 - some cleanups in spec
