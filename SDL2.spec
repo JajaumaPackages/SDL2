@@ -1,11 +1,13 @@
 Name:           SDL2
 Version:        2.0.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
 License:        zlib and MIT
 Source0:        http://www.libsdl.org/tmp/release/%{name}-%{version}.tar.gz
+Source1:        SDL_config.h
+Patch0:         multilib.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -51,6 +53,7 @@ developing SDL applications.
 
 %prep
 %setup -q
+%patch0 -p1 -b .multilib
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
@@ -68,6 +71,11 @@ make %{?_smp_mflags}
 
 %install
 %make_install
+
+# Rename SDL_config.h to SDL_config-<arch>.h to avoid file conflicts on
+# multilib systems and install SDL_config.h wrapper
+mv %{buildroot}%{_includedir}/SDL/SDL_config.h %{buildroot}%{_includedir}/SDL2/SDL_config-%{_arch}.h
+install -p -m 644 %{SOURCE1} %{buildroot}%{_includedir}/SDL2/SDL_config.h
 
 # remove libtool .la file
 rm -f %{buildroot}%{_libdir}/*.la
@@ -91,6 +99,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Sat Aug 24 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.0-3
+- Fix multilib issues
+
 * Tue Aug 13 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.0-2
 - SDL2 is released. Announce:
 - http://lists.libsdl.org/pipermail/sdl-libsdl.org/2013-August/089854.html
