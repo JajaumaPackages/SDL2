@@ -74,7 +74,7 @@ make %{?_smp_mflags}
 
 # Rename SDL_config.h to SDL_config-<arch>.h to avoid file conflicts on
 # multilib systems and install SDL_config.h wrapper
-mv %{buildroot}%{_includedir}/SDL/SDL_config.h %{buildroot}%{_includedir}/SDL2/SDL_config-%{_arch}.h
+mv %{buildroot}%{_includedir}/SDL2/SDL_config.h %{buildroot}%{_includedir}/SDL2/SDL_config-%{_arch}.h
 install -p -m 644 %{SOURCE1} %{buildroot}%{_includedir}/SDL2/SDL_config.h
 
 # remove libtool .la file
