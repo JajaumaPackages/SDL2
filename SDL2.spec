@@ -5,7 +5,7 @@ Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
 License:        zlib and MIT
-Source0:        http://www.libsdl.org/tmp/release/%{name}-%{version}.tar.gz
+Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 Patch0:         multilib.patch
 
