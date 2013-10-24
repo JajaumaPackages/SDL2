@@ -70,7 +70,7 @@ sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDIT
 make %{?_smp_mflags}
 
 %install
-make DESTDIR=%{buildroot} install
+%make_install
 
 # Rename SDL_config.h to SDL_config-<arch>.h to avoid file conflicts on
 # multilib systems and install SDL_config.h wrapper
