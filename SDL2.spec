@@ -1,6 +1,6 @@
 Name:           SDL2
-Version:        2.0.0
-Release:        3%{?dist}
+Version:        2.0.1
+Release:        1%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -70,7 +70,7 @@ sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDIT
 make %{?_smp_mflags}
 
 %install
-%make_install
+make DESTDIR=%{buildroot} install
 
 # Rename SDL_config.h to SDL_config-<arch>.h to avoid file conflicts on
 # multilib systems and install SDL_config.h wrapper
@@ -99,6 +99,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Thu Oct 24 2013 Tom Callaway <spot@fedoraproject.org> - 2.0.1-1
+- update to 2.0.1
+
 * Sat Aug 24 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.0-3
 - Fix multilib issues
 
