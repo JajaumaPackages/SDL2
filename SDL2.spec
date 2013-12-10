@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -24,6 +24,9 @@ BuildRequires:  dbus-devel
 BuildRequires:  libXScrnSaver-devel
 BuildRequires:  libusb-devel
 BuildRequires:  pulseaudio-libs-devel
+BuildRequires:  libXinerama-devel
+BuildRequires:  libXcursor-devel
+BuildRequires:  systemd-devel
 
 %description
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -44,6 +47,9 @@ Requires:   libXext-devel
 Requires:   libXrandr-devel
 Requires:   libXrender-devel
 Requires:   libXScrnSaver-devel
+Requires:   libXinerama-devel
+Requires:   libXcursor-devel
+Requires:   systemd-devel
 
 %description devel
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -99,6 +105,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Tue Dec 10 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.1-2
+- Add libXinerama, libudev, libXcursor support (RHBZ #1039702)
+
 * Thu Oct 24 2013 Tom Callaway <spot@fedoraproject.org> - 2.0.1-1
 - update to 2.0.1
 
