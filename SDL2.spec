@@ -1,6 +1,6 @@
 Name:           SDL2
-Version:        2.0.1
-Release:        2%{?dist}
+Version:        2.0.2
+Release:        1%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -27,6 +27,11 @@ BuildRequires:  pulseaudio-libs-devel
 BuildRequires:  libXinerama-devel
 BuildRequires:  libXcursor-devel
 BuildRequires:  systemd-devel
+# Wayland
+BuildRequires:  libwayland-client-devel
+BuildRequires:  libwayland-egl-devel
+BuildRequires:  libwayland-cursor-devel
+BuildRequires:  libxkbcommon-devel
 
 %description
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -50,6 +55,11 @@ Requires:   libXScrnSaver-devel
 Requires:   libXinerama-devel
 Requires:   libXcursor-devel
 Requires:   systemd-devel
+# Wayland
+Requires:   libwayland-client-devel
+Requires:   libwayland-egl-devel
+Requires:   libwayland-cursor-devel
+Requires:   libxkbcommon-devel
 
 %description devel
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -72,6 +82,7 @@ sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDIT
     --disable-nas \
     --enable-pulseaudio-shared \
     --enable-alsa \
+    --enable-video-wayland \
     --disable-rpath
 make %{?_smp_mflags}
 
@@ -105,6 +116,10 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Sat Mar 08 2014 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.2-1
+- 2.0.2 upstream release
+- Enable wayland backend
+
 * Tue Dec 10 2013 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.1-2
 - Add libXinerama, libudev, libXcursor support (RHBZ #1039702)
 
