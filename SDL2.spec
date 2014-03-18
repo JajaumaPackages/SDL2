@@ -1,5 +1,5 @@
 Name:           SDL2
-Version:        2.0.2
+Version:        2.0.3
 Release:        1%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
@@ -116,6 +116,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Wed Mar 19 2014 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.3-1
+- 2.0.3 upstream release
+
 * Sat Mar 08 2014 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.2-1
 - 2.0.2 upstream release
 - Enable wayland backend
