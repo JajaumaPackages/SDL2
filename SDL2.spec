@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.3
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -116,6 +116,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Wed Jun 11 2014 Karsten Hopp <karsten@redhat.com> 2.0.3-3
+- fix filename of SDL_config.h for ppc64le
+
 * Fri Jun 06 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0.3-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
 

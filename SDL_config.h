@@ -43,7 +43,11 @@
 #elif defined(__ia64__)
 #include "SDL_config-ia64.h"
 #elif defined(__powerpc64__)
+# if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #include "SDL_config-ppc64.h"
+# else
+#include "SDL_config-ppc64le.h"
+# endif
 #elif defined(__powerpc__)
 #include "SDL_config-ppc.h"
 #elif defined(__s390x__)
