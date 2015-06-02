@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.3
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -8,6 +8,8 @@ License:        zlib and MIT
 Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 Patch0:         multilib.patch
+# https://hg.libsdl.org/SDL/rev/7e843b8b8301
+Patch1:		SDL2-2.0.3-oldgcc.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -70,6 +72,7 @@ developing SDL applications.
 %prep
 %setup -q
 %patch0 -p1 -b .multilib
+%patch1 -p1 -b .oldgcc
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
@@ -116,6 +119,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Tue Jun  2 2015 Tom Callaway <spot@fedoraproject.org> - 2.0.3-5
+- remove code preventing builds with ancient gcc
+
 * Fri Aug 15 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0.3-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
 
