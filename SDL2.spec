@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.3
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -119,6 +119,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Tue Jun 16 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 2.0.3-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
 * Tue Jun  2 2015 Tom Callaway <spot@fedoraproject.org> - 2.0.3-5
 - remove code preventing builds with ancient gcc
 
