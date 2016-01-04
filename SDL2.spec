@@ -1,6 +1,6 @@
 Name:           SDL2
-Version:        2.0.3
-Release:        7%{?dist}
+Version:        2.0.4
+Release:        1%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -8,8 +8,6 @@ License:        zlib and MIT
 Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 Patch0:         multilib.patch
-# https://hg.libsdl.org/SDL/rev/7e843b8b8301
-Patch1:		SDL2-2.0.3-oldgcc.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -72,7 +70,6 @@ developing SDL applications.
 %prep
 %setup -q
 %patch0 -p1 -b .multilib
-%patch1 -p1 -b .oldgcc
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
@@ -115,10 +112,14 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_bindir}/*-config
 %{_libdir}/lib*.so
 %{_libdir}/pkgconfig/sdl2.pc
+%{_libdir}/cmake/SDL2/
 %{_includedir}/SDL2
 %{_datadir}/aclocal/*
 
 %changelog
+* Mon Jan 04 2016 Tom Callaway <spot@fedoraproject.org> - 2.0.4-1
+- update to 2.0.4
+
 * Fri Sep 04 2015 Michal Toman <mtoman@fedoraproject.org> - 2.0.3-7
 - Add support for MIPS architecture to SDL_config.h
 
