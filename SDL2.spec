@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -8,7 +8,8 @@ License:        zlib and MIT
 Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 Patch0:         multilib.patch
-
+# https://bugzilla.libsdl.org/show_bug.cgi?id=3255
+Patch1:		SDL2-wayland-dyn-wl_proxy_marshal_constructor_versioned.patch
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
 BuildRequires:  mesa-libGL-devel
@@ -117,6 +118,9 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_datadir}/aclocal/*
 
 %changelog
+* Fri Feb  5 2016 Tom Callaway <spot@fedoraproject.org> - 2.0.4-3
+- fix compile against latest wayland
+
 * Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 2.0.4-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
 
