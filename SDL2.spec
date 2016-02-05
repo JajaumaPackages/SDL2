@@ -71,6 +71,7 @@ developing SDL applications.
 %prep
 %setup -q
 %patch0 -p1 -b .multilib
+%patch1 -p1 -b .waylandfix
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
