@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -68,6 +68,12 @@ to provide fast access to the graphics frame buffer and audio device. This
 package provides the libraries, include files, and other resources needed for
 developing SDL applications.
 
+%package static
+Summary:	Static libraries for SDL2
+
+%description static
+Static libraries for SDL2.
+
 %prep
 %setup -q
 %patch0 -p1 -b .multilib
@@ -99,14 +105,15 @@ install -p -m 644 %{SOURCE1} %{buildroot}%{_includedir}/SDL2/SDL_config.h
 # remove libtool .la file
 rm -f %{buildroot}%{_libdir}/*.la
 # remove static .a file
-rm -f %{buildroot}%{_libdir}/*.a
+# rm -f %{buildroot}%{_libdir}/*.a
 
 %post -p /sbin/ldconfig
 
 %postun -p /sbin/ldconfig
 
 %files
-%doc BUGS.txt CREDITS.txt COPYING.txt README-SDL.txt
+%license COPYING.txt
+%doc BUGS.txt CREDITS.txt README-SDL.txt
 %{_libdir}/lib*.so.*
 
 %files devel
@@ -118,7 +125,14 @@ rm -f %{buildroot}%{_libdir}/*.a
 %{_includedir}/SDL2
 %{_datadir}/aclocal/*
 
+%files static
+%license COPYING.txt
+%{_libdir}/lib*.a
+
 %changelog
+* Thu Feb 25 2016 Tom Callaway <spot@fedoraproject.org> - 2.0.4-4
+- enable static subpackage (bz1253930)
+
 * Fri Feb  5 2016 Tom Callaway <spot@fedoraproject.org> - 2.0.4-3
 - fix compile against latest wayland
 
