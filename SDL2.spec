@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -28,6 +28,8 @@ BuildRequires:  pulseaudio-libs-devel
 BuildRequires:  libXinerama-devel
 BuildRequires:  libXcursor-devel
 BuildRequires:  systemd-devel
+# IBus
+BuildRequires:  pkgconfig(ibus-1.0)
 # Wayland
 BuildRequires:  libwayland-client-devel
 BuildRequires:  libwayland-egl-devel
@@ -130,6 +132,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Sun Jul 10 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.4-6
+- Add ibus support
+
 * Sun Jul 10 2016 Joseph Mullally <jwmullally@gmail.com> - 2.0.4-5
 - fix Wayland dynamic symbol loading (bz1354155)
 
