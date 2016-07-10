@@ -21,20 +21,22 @@ BuildRequires:  libX11-devel
 BuildRequires:  libXi-devel
 BuildRequires:  libXrandr-devel
 BuildRequires:  libXrender-devel
-BuildRequires:  dbus-devel
 BuildRequires:  libXScrnSaver-devel
 BuildRequires:  libusb-devel
-BuildRequires:  pulseaudio-libs-devel
 BuildRequires:  libXinerama-devel
 BuildRequires:  libXcursor-devel
 BuildRequires:  systemd-devel
+# PulseAudio
+BuildRequires:  pkgconfig(libpulse-simple)
+# D-Bus
+BuildRequires:  pkgconfig(dbus-1)
 # IBus
 BuildRequires:  pkgconfig(ibus-1.0)
 # Wayland
-BuildRequires:  libwayland-client-devel
-BuildRequires:  libwayland-egl-devel
-BuildRequires:  libwayland-cursor-devel
-BuildRequires:  libxkbcommon-devel
+BuildRequires:  pkgconfig(wayland-client)
+BuildRequires:  pkgconfig(wayland-egl)
+BuildRequires:  pkgconfig(wayland-cursor)
+BuildRequires:  pkgconfig(xkbcommon)
 
 %description
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
