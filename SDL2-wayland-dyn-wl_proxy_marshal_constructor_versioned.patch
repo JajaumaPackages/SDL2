@@ -9,3 +9,16 @@ diff -up SDL2-2.0.4/src/video/wayland/SDL_waylanddyn.h.fix SDL2-2.0.4/src/video/
  
  #define wl_seat_interface (*WAYLAND_wl_seat_interface)
  #define wl_surface_interface (*WAYLAND_wl_surface_interface)
+diff -up SDL2-2.0.4/src/video/wayland/SDL_waylandsym.h.fix SDL2-2.0.4/src/video/wayland/SDL_waylandsym.h
+--- SDL2-2.0.4/src/video/wayland/SDL_waylandsym.h.fix	2016-07-10 17:55:53.970424955 +0100
++++ SDL2-2.0.4/src/video/wayland/SDL_waylandsym.h	2016-07-10 18:03:01.627109626 +0100
+@@ -55,6 +55,9 @@ SDL_WAYLAND_SYM(void, wl_list_insert_lis
+ SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_4)
+ SDL_WAYLAND_SYM(struct wl_proxy *, wl_proxy_marshal_constructor, (struct wl_proxy *, uint32_t opcode, const struct wl_interface *interface, ...))
+ 
++SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_10)
++SDL_WAYLAND_SYM(struct wl_proxy *, wl_proxy_marshal_constructor_versioned, (struct wl_proxy *proxy, uint32_t opcode, const struct wl_interface *interface, uint32_t version, ...))
++
+ SDL_WAYLAND_INTERFACE(wl_seat_interface)
+ SDL_WAYLAND_INTERFACE(wl_surface_interface)
+ SDL_WAYLAND_INTERFACE(wl_shm_pool_interface)

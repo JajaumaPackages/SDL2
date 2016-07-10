@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        A cross-platform multimedia library
 Group:          System Environment/Libraries
 URL:            http://www.libsdl.org/
@@ -130,6 +130,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Sun Jul 10 2016 Joseph Mullally <jwmullally@gmail.com> - 2.0.4-5
+- fix Wayland dynamic symbol loading (bz1354155)
+
 * Thu Feb 25 2016 Tom Callaway <spot@fedoraproject.org> - 2.0.4-4
 - enable static subpackage (bz1253930)
 
