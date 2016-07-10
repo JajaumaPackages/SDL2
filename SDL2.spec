@@ -1,15 +1,17 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        A cross-platform multimedia library
-Group:          System Environment/Libraries
-URL:            http://www.libsdl.org/
+
 License:        zlib and MIT
+URL:            http://www.libsdl.org/
 Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
+
 Patch0:         multilib.patch
 # https://bugzilla.libsdl.org/show_bug.cgi?id=3255
 Patch1:		SDL2-wayland-dyn-wl_proxy_marshal_constructor_versioned.patch
+
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
 BuildRequires:  mesa-libGL-devel
@@ -43,28 +45,11 @@ Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
 to provide fast access to the graphics frame buffer and audio device.
 
 %package devel
-Summary:    Files needed to develop Simple DirectMedia Layer applications
-Group:      Development/Libraries
-Requires:   %{name}%{?_isa} = %{version}-%{release}
-Requires:   alsa-lib-devel
-Requires:   mesa-libGL-devel
-Requires:   mesa-libGLU-devel
-Requires:   mesa-libEGL-devel
-Requires:   mesa-libGLES-devel
-Requires:   libX11-devel
-Requires:   libXi-devel
-Requires:   libXext-devel
-Requires:   libXrandr-devel
-Requires:   libXrender-devel
-Requires:   libXScrnSaver-devel
-Requires:   libXinerama-devel
-Requires:   libXcursor-devel
-Requires:   systemd-devel
-# Wayland
-Requires:   libwayland-client-devel
-Requires:   libwayland-egl-devel
-Requires:   libwayland-cursor-devel
-Requires:   libxkbcommon-devel
+Summary:        Files needed to develop Simple DirectMedia Layer applications
+Requires:       %{name}%{?_isa} = %{version}-%{release}
+Requires:       mesa-libEGL-devel%{?_isa}
+Requires:       mesa-libGLES-devel%{?_isa}
+Requires:       libX11-devel%{?_isa}
 
 %description devel
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -134,6 +119,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Sun Jul 10 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.4-7
+- Remove useless Requirements from -devel subpkg
+
 * Sun Jul 10 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.4-6
 - Add ibus support
 
