@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        7%{?dist}
+Release:        8%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -11,6 +11,9 @@ Source1:        SDL_config.h
 Patch0:         multilib.patch
 # https://bugzilla.libsdl.org/show_bug.cgi?id=3255
 Patch1:		SDL2-wayland-dyn-wl_proxy_marshal_constructor_versioned.patch
+# https://bugzilla.libsdl.org/show_bug.cgi?id=3295
+# https://bugzilla.redhat.com/show_bug.cgi?id=1366868
+Patch2:         bug_822210_fix_sdl2-config.cmake_whitespace.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -119,6 +122,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Sun Aug 14 2016 Igor Gnatenko <ignatenko@redhat.com> - 2.0.4-8
+- Fix whitespaces in CMake file (RHBZ #1366868)
+
 * Sun Jul 10 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.4-7
 - Remove useless Requirements from -devel subpkg
 
