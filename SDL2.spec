@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.4
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -9,8 +9,8 @@ Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 
 Patch0:         multilib.patch
-# https://bugzilla.libsdl.org/show_bug.cgi?id=3255
-Patch1:		SDL2-wayland-dyn-wl_proxy_marshal_constructor_versioned.patch
+# Wayland fixes backported from upstream
+Patch1:         SDL2-wayland-fixes.patch
 # https://bugzilla.libsdl.org/show_bug.cgi?id=3295
 # https://bugzilla.redhat.com/show_bug.cgi?id=1366868
 Patch2:         bug_822210_fix_sdl2-config.cmake_whitespace.patch
@@ -41,6 +41,8 @@ BuildRequires:  pkgconfig(ibus-1.0)
 BuildRequires:  pkgconfig(wayland-client)
 BuildRequires:  pkgconfig(wayland-egl)
 BuildRequires:  pkgconfig(wayland-cursor)
+BuildRequires:  pkgconfig(wayland-protocols)
+BuildRequires:  pkgconfig(wayland-scanner)
 BuildRequires:  pkgconfig(xkbcommon)
 
 %description
@@ -69,7 +71,7 @@ Static libraries for SDL2.
 %prep
 %setup -q
 %patch0 -p1 -b .multilib
-%patch1 -p1 -b .waylandfix
+%patch1 -p1 -b .wayland-fixes
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
@@ -122,6 +124,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Mon Sep 05 2016 Kalev Lember <klember@redhat.com> - 2.0.4-9
+- Backport Wayland fixes from upstream
+
 * Sun Aug 14 2016 Igor Gnatenko <ignatenko@redhat.com> - 2.0.4-8
 - Fix whitespaces in CMake file (RHBZ #1366868)
 

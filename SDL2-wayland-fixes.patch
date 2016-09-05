@@ -1,0 +1,1224 @@
+# HG changeset patch
+# User Jonas Ådahl <jadahl@gmail.com>
+# Date 1455693260 -28800
+#      Wed Feb 17 15:14:20 2016 +0800
+# Node ID 330f500d5815801a22125bcc9836f769d6a661c9
+# Parent  0897c3accd52754bcda428286bcfd64d78b9718f
+wayland: Add wl_proxy_marshal_constructor_versioned sym
+
+wl_proxy_marshal_constructor_versioned was introduce in wayland-client 1.10.
+
+diff -r 0897c3accd52 -r 330f500d5815 src/video/wayland/SDL_waylanddyn.h
+--- a/src/video/wayland/SDL_waylanddyn.h	Thu Feb 25 10:06:33 2016 -0800
++++ b/src/video/wayland/SDL_waylanddyn.h	Wed Feb 17 15:14:20 2016 +0800
+@@ -76,6 +76,7 @@
+ #define wl_proxy_get_user_data (*WAYLAND_wl_proxy_get_user_data)
+ #define wl_proxy_add_listener (*WAYLAND_wl_proxy_add_listener)
+ #define wl_proxy_marshal_constructor (*WAYLAND_wl_proxy_marshal_constructor)
++#define wl_proxy_marshal_constructor_versioned (*WAYLAND_wl_proxy_marshal_constructor_versioned)
+ 
+ #define wl_seat_interface (*WAYLAND_wl_seat_interface)
+ #define wl_surface_interface (*WAYLAND_wl_surface_interface)
+diff -r 0897c3accd52 -r 330f500d5815 src/video/wayland/SDL_waylandsym.h
+--- a/src/video/wayland/SDL_waylandsym.h	Thu Feb 25 10:06:33 2016 -0800
++++ b/src/video/wayland/SDL_waylandsym.h	Wed Feb 17 15:14:20 2016 +0800
+@@ -67,6 +67,9 @@
+ SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_4)
+ SDL_WAYLAND_SYM(struct wl_proxy *, wl_proxy_marshal_constructor, (struct wl_proxy *, uint32_t opcode, const struct wl_interface *interface, ...))
+ 
++SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_10)
++SDL_WAYLAND_SYM(struct wl_proxy *, wl_proxy_marshal_constructor_versioned, (struct wl_proxy *proxy, uint32_t opcode, const struct wl_interface *interface, uint32_t version, ...))
++
+ SDL_WAYLAND_INTERFACE(wl_seat_interface)
+ SDL_WAYLAND_INTERFACE(wl_surface_interface)
+ SDL_WAYLAND_INTERFACE(wl_shm_pool_interface)
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1456946709 -3600
+#      Wed Mar 02 20:25:09 2016 +0100
+# Node ID 91b34fbbb88e5b69c8b535bd01d530913bcd5112
+# Parent  06085b9c73efe0b36ec04f50abd7cf019faab699
+Wayland: Fixed crash if allocating memory for cursor failed.
+
+Also added missing error message if first allocation failed.
+
+diff -r 06085b9c73ef -r 91b34fbbb88e src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Wed Mar 02 20:24:43 2016 +0100
++++ b/src/video/wayland/SDL_waylandmouse.c	Wed Mar 02 20:25:09 2016 +0100
+@@ -159,6 +159,11 @@
+         SDL_VideoDevice *vd = SDL_GetVideoDevice ();
+         SDL_VideoData *wd = (SDL_VideoData *) vd->driverdata;
+         Wayland_CursorData *data = calloc (1, sizeof (Wayland_CursorData));
++        if (!data) {
++            SDL_OutOfMemory();
++            free(cursor);
++            return NULL;
++        }
+         cursor->driverdata = (void *) data;
+ 
+         /* Assume ARGB8888 */
+@@ -187,6 +192,8 @@
+         data->hot_y = hot_y;
+         data->w = surface->w;
+         data->h = surface->h;
++    } else {
++        SDL_OutOfMemory();
+     }
+ 
+     return cursor;
+@@ -200,6 +207,11 @@
+     cursor = calloc(1, sizeof (*cursor));
+     if (cursor) {
+         Wayland_CursorData *data = calloc (1, sizeof (Wayland_CursorData));
++        if (!data) {
++            SDL_OutOfMemory();
++            free(cursor);
++            return NULL;
++        }
+         cursor->driverdata = (void *) data;
+ 
+         data->buffer = WAYLAND_wl_cursor_image_get_buffer(wlcursor->images[0]);
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1456946723 -3600
+#      Wed Mar 02 20:25:23 2016 +0100
+# Node ID c7932bb6dcee76e6af0e7b4b52b4b63dc1ee5d13
+# Parent  91b34fbbb88e5b69c8b535bd01d530913bcd5112
+Wayland: Fixed fault in event handling which might have caused a crash someday.
+
+Found by Cppcheck.
+
+diff -r 91b34fbbb88e -r c7932bb6dcee src/video/wayland/SDL_waylandevents.c
+--- a/src/video/wayland/SDL_waylandevents.c	Wed Mar 02 20:25:09 2016 +0100
++++ b/src/video/wayland/SDL_waylandevents.c	Wed Mar 02 20:25:23 2016 +0100
+@@ -302,9 +302,9 @@
+  
+     window = wl_surface_get_user_data(surface);
+ 
+-    input->keyboard_focus = window;
+-    window->keyboard_device = input;
+     if (window) {
++        input->keyboard_focus = window;
++        window->keyboard_device = input;
+         SDL_SetKeyboardFocus(window->sdlwindow);
+     }
+ }
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1457730590 -3600
+#      Fri Mar 11 22:09:50 2016 +0100
+# Node ID 991977532d7fee8bfaeb4572c47f376e15bcc698
+# Parent  f3c18811079dde1dfb2795977e92cfdb80fae5e3
+Wayland: Fixed showing created cursors incorrectly before the first redraw.
+
+diff -r f3c18811079d -r 991977532d7f src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Thu Mar 10 21:00:44 2016 +0100
++++ b/src/video/wayland/SDL_waylandmouse.c	Fri Mar 11 22:09:50 2016 +0100
+@@ -334,13 +334,13 @@
+     {
+         Wayland_CursorData *data = cursor->driverdata;
+ 
+-        wl_surface_attach(data->surface, data->buffer, 0, 0);
+-        wl_surface_damage(data->surface, 0, 0, data->w, data->h);
+-        wl_surface_commit(data->surface);
+         wl_pointer_set_cursor (pointer, 0,
+                                data->surface,
+                                data->hot_x,
+                                data->hot_y);
++        wl_surface_attach(data->surface, data->buffer, 0, 0);
++        wl_surface_damage(data->surface, 0, 0, data->w, data->h);
++        wl_surface_commit(data->surface);
+     }
+     else
+     {
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1457730615 -3600
+#      Fri Mar 11 22:10:15 2016 +0100
+# Node ID 6740b15172f008635eb71189141d86663b630e7c
+# Parent  991977532d7fee8bfaeb4572c47f376e15bcc698
+Wayland: Fixed drawing created cursors without transparency.
+
+diff -r 991977532d7f -r 6740b15172f0 src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Fri Mar 11 22:09:50 2016 +0100
++++ b/src/video/wayland/SDL_waylandmouse.c	Fri Mar 11 22:10:15 2016 +0100
+@@ -174,7 +174,7 @@
+         if (create_buffer_from_shm (data,
+                                     surface->w,
+                                     surface->h,
+-                                    WL_SHM_FORMAT_XRGB8888) < 0)
++                                    WL_SHM_FORMAT_ARGB8888) < 0)
+         {
+             free (cursor->driverdata);
+             free (cursor);
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1458162563 -3600
+#      Wed Mar 16 22:09:23 2016 +0100
+# Node ID ac9831ff70d1b8bdba3462c19b4fec4a8fe1c9cc
+# Parent  7552aa4c1c6db44ce04dfb76c4f3603977382185
+Wayland: Fixed storing a theme cursor which is never used in video data.
+
+diff -r 7552aa4c1c6d -r ac9831ff70d1 src/video/wayland/SDL_waylandvideo.c
+--- a/src/video/wayland/SDL_waylandvideo.c	Fri Mar 11 08:33:47 2016 -0800
++++ b/src/video/wayland/SDL_waylandvideo.c	Wed Mar 16 22:09:23 2016 +0100
+@@ -253,7 +253,6 @@
+     } else if (strcmp(interface, "wl_shm") == 0) {
+         d->shm = wl_registry_bind(registry, id, &wl_shm_interface, 1);
+         d->cursor_theme = WAYLAND_wl_cursor_theme_load(NULL, 32, d->shm);
+-        d->default_cursor = WAYLAND_wl_cursor_theme_get_cursor(d->cursor_theme, "left_ptr");
+ 
+ #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
+     } else if (strcmp(interface, "qt_touch_extension") == 0) {
+diff -r 7552aa4c1c6d -r ac9831ff70d1 src/video/wayland/SDL_waylandvideo.h
+--- a/src/video/wayland/SDL_waylandvideo.h	Fri Mar 11 08:33:47 2016 -0800
++++ b/src/video/wayland/SDL_waylandvideo.h	Wed Mar 16 22:09:23 2016 +0100
+@@ -42,7 +42,6 @@
+     struct wl_compositor *compositor;
+     struct wl_shm *shm;
+     struct wl_cursor_theme *cursor_theme;
+-    struct wl_cursor *default_cursor;
+     struct wl_pointer *pointer;
+     struct wl_shell *shell;
+ 
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1458162579 -3600
+#      Wed Mar 16 22:09:39 2016 +0100
+# Node ID f49e8a97c21463ce8c83a136deb945b9d4578906
+# Parent  ac9831ff70d1b8bdba3462c19b4fec4a8fe1c9cc
+Wayland: Fixed crash if memory mapping failed while creating a custom cursor.
+
+diff -r ac9831ff70d1 -r f49e8a97c214 src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Wed Mar 16 22:09:23 2016 +0100
++++ b/src/video/wayland/SDL_waylandmouse.c	Wed Mar 16 22:09:39 2016 +0100
+@@ -130,6 +130,7 @@
+         d->shm_data = NULL;
+         fprintf (stderr, "mmap () failed\n");
+         close (shm_fd);
++        return -1;
+     }
+ 
+     shm_pool = wl_shm_create_pool(data->shm, shm_fd, size);
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1459191784 -7200
+#      Mon Mar 28 21:03:04 2016 +0200
+# Node ID eba8155e32b10db71ab97202bd92417c417bc534
+# Parent  b1e3eae293a2f141c1936ac52b4d686cbf0a6649
+Wayland: Fixed missing error message if creating a custom cursor failed.
+
+SDL_GetError() returned no error message because it was written to stderr only.
+
+diff -r b1e3eae293a2 -r eba8155e32b1 src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Mon Mar 28 21:02:30 2016 +0200
++++ b/src/video/wayland/SDL_waylandmouse.c	Mon Mar 28 21:03:04 2016 +0200
+@@ -116,8 +116,7 @@
+     shm_fd = wayland_create_tmp_file(size);
+     if (shm_fd < 0)
+     {
+-        fprintf(stderr, "creating mouse cursor buffer failed!\n");
+-        return -1;
++        return SDL_SetError("Creating mouse cursor buffer failed.");
+     }
+ 
+     d->shm_data = mmap(NULL,
+@@ -128,9 +127,8 @@
+                        0);
+     if (d->shm_data == MAP_FAILED) {
+         d->shm_data = NULL;
+-        fprintf (stderr, "mmap () failed\n");
+         close (shm_fd);
+-        return -1;
++        return SDL_SetError("mmap() failed.");
+     }
+ 
+     shm_pool = wl_shm_create_pool(data->shm, shm_fd, size);
+# HG changeset patch
+# User Philipp Wiesemann <philipp.wiesemann@arcor.de>
+# Date 1460661103 -7200
+#      Thu Apr 14 21:11:43 2016 +0200
+# Node ID fae27a079fcb77cf051fbd617f79ba6313ce3554
+# Parent  2abd425e41dcd153ba6ee3cb84b3c9c9d0365e6c
+Wayland: Removed not needed including and setting of errno.
+
+One internal function was setting errno on error but it was not read afterwards.
+
+diff -r 2abd425e41dc -r fae27a079fcb src/video/wayland/SDL_waylandevents.c
+--- a/src/video/wayland/SDL_waylandevents.c	Thu Apr 14 21:10:57 2016 +0200
++++ b/src/video/wayland/SDL_waylandevents.c	Thu Apr 14 21:11:43 2016 +0200
+@@ -40,7 +40,6 @@
+ #include <sys/select.h>
+ #include <sys/mman.h>
+ #include <poll.h>
+-#include <errno.h>
+ #include <unistd.h>
+ #include <xkbcommon/xkbcommon.h>
+ 
+diff -r 2abd425e41dc -r fae27a079fcb src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Thu Apr 14 21:10:57 2016 +0200
++++ b/src/video/wayland/SDL_waylandmouse.c	Thu Apr 14 21:11:43 2016 +0200
+@@ -27,7 +27,6 @@
+ #define _GNU_SOURCE
+ #endif
+ 
+-#include <errno.h>
+ #include <sys/types.h>
+ #include <sys/mman.h>
+ #include <fcntl.h>
+@@ -70,7 +69,6 @@
+ 
+     xdg_path = SDL_getenv("XDG_RUNTIME_DIR");
+     if (!xdg_path) {
+-        errno = ENOENT;
+         return -1;
+     }
+ 
+# HG changeset patch
+# User Bastien Nocera <hadess@hadess.net>
+# Date 1472718178 25200
+#      Thu Sep 01 01:22:58 2016 -0700
+# Node ID 729eff9ee77adc29f100da2cd3310b240eb3e29e
+# Parent  a25d9c643cfbb62c0551917996d7a61b42b18f0b
+Wayland: Set "class" for each window we create
+This will be used by Wayland compositors to match the application ID and
+.desktop file to the SDL window(s).
+
+Applications can set the SDL_VIDEO_WAYLAND_WMCLASS environemnt variable
+early in the process to override using the binary name as a fallback.
+
+Note that we also support the SDL_VIDEO_X11_WMCLASS in the Wayland
+backend so that if a program correctly associated the desktop file with
+the window under X11, only a newer SDL would be needed for it to work
+under Wayland.
+
+https://bugzilla.libsdl.org/show_bug.cgi?id=3376
+
+diff -r a25d9c643cfb -r 729eff9ee77a src/video/wayland/SDL_waylandvideo.c
+--- a/src/video/wayland/SDL_waylandvideo.c	Wed Aug 31 16:10:04 2016 -0400
++++ b/src/video/wayland/SDL_waylandvideo.c	Thu Sep 01 01:22:58 2016 -0700
+@@ -35,6 +35,8 @@
+ #include "SDL_waylandmouse.h"
+ #include "SDL_waylandtouch.h"
+ 
++#include <sys/types.h>
++#include <unistd.h>
+ #include <fcntl.h>
+ #include <xkbcommon/xkbcommon.h>
+ 
+@@ -55,6 +57,56 @@
+ static void
+ Wayland_VideoQuit(_THIS);
+ 
++/* Find out what class name we should use
++ * Based on src/video/x11/SDL_x11video.c */
++static char *
++get_classname()
++{
++    char *spot;
++#if defined(__LINUX__) || defined(__FREEBSD__)
++    char procfile[1024];
++    char linkfile[1024];
++    int linksize;
++#endif
++
++    /* First allow environment variable override */
++    spot = SDL_getenv("SDL_VIDEO_WAYLAND_WMCLASS");
++    if (spot) {
++        return SDL_strdup(spot);
++    } else {
++        /* Fallback to the "old" envvar */
++        spot = SDL_getenv("SDL_VIDEO_X11_WMCLASS");
++        if (spot) {
++            return SDL_strdup(spot);
++        }
++    }
++
++    /* Next look at the application's executable name */
++#if defined(__LINUX__) || defined(__FREEBSD__)
++#if defined(__LINUX__)
++    SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/exe", getpid());
++#elif defined(__FREEBSD__)
++    SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/file",
++                 getpid());
++#else
++#error Where can we find the executable name?
++#endif
++    linksize = readlink(procfile, linkfile, sizeof(linkfile) - 1);
++    if (linksize > 0) {
++        linkfile[linksize] = '\0';
++        spot = SDL_strrchr(linkfile, '/');
++        if (spot) {
++            return SDL_strdup(spot + 1);
++        } else {
++            return SDL_strdup(linkfile);
++        }
++    }
++#endif /* __LINUX__ || __FREEBSD__ */
++
++    /* Finally use the default we've used forever */
++    return SDL_strdup("SDL_App");
++}
++
+ /* Wayland driver bootstrap functions */
+ static int
+ Wayland_Available(void)
+@@ -307,6 +359,9 @@
+ 
+     Wayland_InitMouse();
+ 
++    /* Get the surface class name, usually the name of the application */
++    data->classname = get_classname();
++
+     WAYLAND_wl_display_flush(data->display);
+ 
+     return 0;
+@@ -375,6 +430,7 @@
+         WAYLAND_wl_display_disconnect(data->display);
+     }
+ 
++    SDL_free(data->classname);
+     free(data);
+     _this->driverdata = NULL;
+ }
+diff -r a25d9c643cfb -r 729eff9ee77a src/video/wayland/SDL_waylandvideo.h
+--- a/src/video/wayland/SDL_waylandvideo.h	Wed Aug 31 16:10:04 2016 -0400
++++ b/src/video/wayland/SDL_waylandvideo.h	Thu Sep 01 01:22:58 2016 -0700
+@@ -57,6 +57,8 @@
+     struct qt_surface_extension *surface_extension;
+     struct qt_windowmanager *windowmanager;
+ #endif /* SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
++
++    char *classname;
+ } SDL_VideoData;
+ 
+ #endif /* _SDL_waylandvideo_h */
+diff -r a25d9c643cfb -r 729eff9ee77a src/video/wayland/SDL_waylandwindow.c
+--- a/src/video/wayland/SDL_waylandwindow.c	Wed Aug 31 16:10:04 2016 -0400
++++ b/src/video/wayland/SDL_waylandwindow.c	Thu Sep 01 01:22:58 2016 -0700
+@@ -178,6 +178,7 @@
+     wl_surface_set_user_data(data->surface, data);
+     data->shell_surface = wl_shell_get_shell_surface(c->shell,
+                                                      data->surface);
++    wl_shell_surface_set_class (data->shell_surface, c->classname);
+ #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH    
+     if (c->surface_extension) {
+         data->extended_surface = qt_surface_extension_get_extended_surface(
+# HG changeset patch
+# User Jonas Ådahl <jadahl@gmail.com>
+# Date 1466678345 -28800
+#      Thu Jun 23 18:39:05 2016 +0800
+# Node ID b326f93e1bc5362cac076800cea06af5301fa3bd
+# Parent  729eff9ee77adc29f100da2cd3310b240eb3e29e
+wayland: Build own version of core protocol
+
+Since we are loading shared objects dynamically, build our own version of the
+core protocol symbols, so that we in the future can include protocol
+extensions.
+
+diff -r 729eff9ee77a -r b326f93e1bc5 Makefile.in
+--- a/Makefile.in	Thu Sep 01 01:22:58 2016 -0700
++++ b/Makefile.in	Thu Jun 23 18:39:05 2016 +0800
+@@ -3,6 +3,7 @@
+ top_builddir = .
+ srcdir  = @srcdir@
+ objects = build
++gen = gen
+ prefix = @prefix@
+ exec_prefix = @exec_prefix@
+ bindir	= @bindir@
+@@ -31,6 +32,8 @@
+ 
+ TARGET  = libSDL2.la
+ OBJECTS = @OBJECTS@
++GEN_HEADERS = @GEN_HEADERS@
++GEN_OBJECTS = @GEN_OBJECTS@
+ VERSION_OBJECTS = @VERSION_OBJECTS@
+ 
+ SDLMAIN_TARGET = libSDL2main.a
+@@ -39,6 +42,8 @@
+ SDLTEST_TARGET = libSDL2_test.a
+ SDLTEST_OBJECTS = @SDLTEST_OBJECTS@
+ 
++WAYLAND_SCANNER = @WAYLAND_SCANNER@
++
+ SRC_DIST = *.txt acinclude Android.mk autogen.sh android-project build-scripts cmake cmake_uninstall.cmake.in configure configure.in debian docs include Makefile.* sdl2-config.cmake.in sdl2-config.in sdl2.m4 sdl2.pc.in SDL2.spec.in src test VisualC.html VisualC VisualC-WinRT Xcode Xcode-iOS
+ GEN_DIST = SDL2.spec
+ 
+@@ -48,6 +53,7 @@
+ RUN_CMD_CXX    = @echo "  CXX   " $@;
+ RUN_CMD_LTLINK = @echo "  LTLINK" $@;
+ RUN_CMD_RANLIB = @echo "  RANLIB" $@;
++RUN_CMD_GEN    = @echo "  GEN   " $@;
+ LIBTOOL += --quiet
+ endif
+ 
+@@ -137,8 +143,8 @@
+ 
+ .PHONY: all update-revision install install-bin install-hdrs install-lib install-data uninstall uninstall-bin uninstall-hdrs uninstall-lib uninstall-data clean distclean dist $(OBJECTS:.lo=.d)
+ 
+-$(objects)/$(TARGET): $(OBJECTS) $(VERSION_OBJECTS)
+-	$(RUN_CMD_LTLINK)$(LIBTOOL) --tag=CC --mode=link $(CC) -o $@ $(OBJECTS) $(VERSION_OBJECTS) $(LDFLAGS) $(EXTRA_LDFLAGS) $(LT_LDFLAGS)
++$(objects)/$(TARGET): $(GEN_HEADERS) $(GEN_OBJECTS) $(OBJECTS) $(VERSION_OBJECTS)
++	$(RUN_CMD_LTLINK)$(LIBTOOL) --tag=CC --mode=link $(CC) -o $@ $(OBJECTS) $(GEN_OBJECTS) $(VERSION_OBJECTS) $(LDFLAGS) $(EXTRA_LDFLAGS) $(LT_LDFLAGS)
+ 
+ $(objects)/$(SDLMAIN_TARGET): $(SDLMAIN_OBJECTS)
+ 	$(RUN_CMD_AR)$(AR) cru $@ $(SDLMAIN_OBJECTS)
+@@ -200,6 +206,7 @@
+ 
+ clean:
+ 	rm -rf $(objects)
++	rm -rf $(gen)
+ 	if test -f test/Makefile; then (cd test; $(MAKE) $@); fi
+ 
+ distclean: clean
+diff -r 729eff9ee77a -r b326f93e1bc5 configure
+--- a/configure	Thu Sep 01 01:22:58 2016 -0700
++++ b/configure	Thu Jun 23 18:39:05 2016 +0800
+@@ -630,6 +630,7 @@
+ #endif"
+ 
+ ac_subst_vars='LTLIBOBJS
++WAYLAND_SCANNER
+ EXTRA_LDFLAGS
+ BUILD_LDFLAGS
+ EXTRA_CFLAGS
+@@ -637,6 +638,8 @@
+ SDLTEST_OBJECTS
+ SDLMAIN_OBJECTS
+ VERSION_OBJECTS
++GEN_OBJECTS
++GEN_HEADERS
+ OBJECTS
+ INCLUDE
+ ac_aux_dir
+@@ -18804,9 +18807,11 @@
+         if  test x$PKG_CONFIG != xno && \
+             test x$video_opengl_egl = xyes && \
+             test x$video_opengles_v2 = xyes; then
+-            if $PKG_CONFIG --exists wayland-client wayland-egl wayland-cursor egl xkbcommon ; then
++            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-egl wayland-cursor egl xkbcommon ; then
+                 WAYLAND_CFLAGS=`$PKG_CONFIG --cflags wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_LIBS=`$PKG_CONFIG --libs wayland-client wayland-egl wayland-cursor xkbcommon`
++                WAYLAND_SCANNER=`$PKG_CONFIG --variable=wayland_scanner wayland-scanner`
++                WAYLAND_CORE_PROTOCOL_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-client`
+                 video_wayland=yes
+             fi
+         fi
+@@ -18823,7 +18828,7 @@
+ 
+             fi
+             SOURCES="$SOURCES $srcdir/src/video/wayland/*.c"
+-            EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS"
++            EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS -I\$(gen)"
+             # Check whether --enable-wayland-shared was given.
+ if test "${enable_wayland_shared+set}" = set; then :
+   enableval=$enable_wayland_shared;
+@@ -23728,6 +23733,33 @@
+ fi
+ SDLTEST_SOURCES="$srcdir/src/test/*.c"
+ 
++if test x$video_wayland = xyes; then
++    WAYLAND_CORE_PROTOCOL_SOURCE='$(gen)/wayland-protocol.c'
++    WAYLAND_CORE_PROTOCOL_HEADER='$(gen)/wayland-client-protocol.h'
++    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE"
++    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER"
++
++    WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_SOURCE: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
++	\$(SHELL) \$(auxdir)/mkinstalldirs \$(gen)
++	\$(RUN_CMD_GEN)\$(WAYLAND_SCANNER) code \$< \$@"
++
++    WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_HEADER: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
++	\$(SHELL) \$(auxdir)/mkinstalldirs \$(gen)
++	\$(RUN_CMD_GEN)\$(WAYLAND_SCANNER) client-header \$< \$@"
++
++    WAYLAND_CORE_PROTOCOL_OBJECT="
++\$(objects)/`echo $WAYLAND_CORE_PROTOCOL_SOURCE | sed 's/\$(gen)\/\(.*\).c$/\1.lo/'`: $WAYLAND_CORE_PROTOCOL_SOURCE
++	\$(RUN_CMD_CC)\$(LIBTOOL) --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \$< -o \$@"
++
++    WAYLAND_PROTOCOLS_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS
++$WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS
++$WAYLAND_CORE_PROTOCOL_OBJECT
++"
++fi
++
+ OBJECTS=`echo $SOURCES`
+ DEPENDS=`echo $SOURCES | tr ' ' '\n'`
+ for EXT in asm cc m c S; do
+@@ -23737,6 +23769,8 @@
+ 	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@,g"`
+ done
+ 
++GEN_OBJECTS=`echo "$GEN_SOURCES" | sed 's,[^ ]*/\([^ ]*\)\.c,$(objects)/\1.lo,g'`
++
+ VERSION_OBJECTS=`echo $VERSION_SOURCES`
+ VERSION_DEPENDS=`echo $VERSION_SOURCES`
+ VERSION_OBJECTS=`echo "$VERSION_OBJECTS" | sed 's,[^ ]*/\([^ ]*\)\.rc,$(objects)/\1.o,g'`
+@@ -23838,6 +23872,9 @@
+ 
+ 
+ 
++
++
++
+ cat >Makefile.rules <<__EOF__
+ 
+ # Build rules for objects
+@@ -23849,6 +23886,7 @@
+ $VERSION_DEPENDS
+ $SDLMAIN_DEPENDS
+ $SDLTEST_DEPENDS
++$WAYLAND_PROTOCOLS_DEPENDS
+ __EOF__
+ 
+ ac_config_files="$ac_config_files Makefile:Makefile.in:Makefile.rules sdl2-config sdl2-config.cmake SDL2.spec sdl2.pc"
+diff -r 729eff9ee77a -r b326f93e1bc5 configure.in
+--- a/configure.in	Thu Sep 01 01:22:58 2016 -0700
++++ b/configure.in	Thu Jun 23 18:39:05 2016 +0800
+@@ -1201,9 +1201,11 @@
+         if  test x$PKG_CONFIG != xno && \
+             test x$video_opengl_egl = xyes && \
+             test x$video_opengles_v2 = xyes; then
+-            if $PKG_CONFIG --exists wayland-client wayland-egl wayland-cursor egl xkbcommon ; then
++            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-egl wayland-cursor egl xkbcommon ; then
+                 WAYLAND_CFLAGS=`$PKG_CONFIG --cflags wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_LIBS=`$PKG_CONFIG --libs wayland-client wayland-egl wayland-cursor xkbcommon`
++                WAYLAND_SCANNER=`$PKG_CONFIG --variable=wayland_scanner wayland-scanner`
++                WAYLAND_CORE_PROTOCOL_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-client`
+                 video_wayland=yes
+             fi
+         fi
+@@ -1215,7 +1217,7 @@
+                 AC_DEFINE(SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH, 1, [ ])
+             fi
+             SOURCES="$SOURCES $srcdir/src/video/wayland/*.c"
+-            EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS"
++            EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS -I\$(gen)"
+             AC_ARG_ENABLE(wayland-shared,
+ AC_HELP_STRING([--enable-wayland-shared], [dynamically load Wayland support [[default=maybe]]]),
+                           , enable_wayland_shared=maybe)
+@@ -3481,6 +3483,33 @@
+ fi
+ SDLTEST_SOURCES="$srcdir/src/test/*.c"
+ 
++if test x$video_wayland = xyes; then
++    WAYLAND_CORE_PROTOCOL_SOURCE='$(gen)/wayland-protocol.c'
++    WAYLAND_CORE_PROTOCOL_HEADER='$(gen)/wayland-client-protocol.h'
++    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE"
++    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER"
++
++    WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_SOURCE: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
++	\$(SHELL) \$(auxdir)/mkinstalldirs \$(gen)
++	\$(RUN_CMD_GEN)\$(WAYLAND_SCANNER) code \$< \$@"
++
++    WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_HEADER: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
++	\$(SHELL) \$(auxdir)/mkinstalldirs \$(gen)
++	\$(RUN_CMD_GEN)\$(WAYLAND_SCANNER) client-header \$< \$@"
++
++    WAYLAND_CORE_PROTOCOL_OBJECT="
++\$(objects)/`echo $WAYLAND_CORE_PROTOCOL_SOURCE | sed 's/\$(gen)\/\(.*\).c$/\1.lo/'`: $WAYLAND_CORE_PROTOCOL_SOURCE
++	\$(RUN_CMD_CC)\$(LIBTOOL) --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \$< -o \$@"
++
++    WAYLAND_PROTOCOLS_DEPENDS="
++$WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS
++$WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS
++$WAYLAND_CORE_PROTOCOL_OBJECT
++"
++fi
++
+ OBJECTS=`echo $SOURCES`
+ DEPENDS=`echo $SOURCES | tr ' ' '\n'`
+ for EXT in asm cc m c S; do
+@@ -3490,6 +3519,8 @@
+ 	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@,g"`
+ done
+ 
++GEN_OBJECTS=`echo "$GEN_SOURCES" | sed 's,[[^ ]]*/\([[^ ]]*\)\.c,$(objects)/\1.lo,g'`
++
+ VERSION_OBJECTS=`echo $VERSION_SOURCES`
+ VERSION_DEPENDS=`echo $VERSION_SOURCES`
+ VERSION_OBJECTS=`echo "$VERSION_OBJECTS" | sed 's,[[^ ]]*/\([[^ ]]*\)\.rc,$(objects)/\1.o,g'`
+@@ -3567,6 +3598,8 @@
+ AC_SUBST(ac_aux_dir)
+ AC_SUBST(INCLUDE)
+ AC_SUBST(OBJECTS)
++AC_SUBST(GEN_HEADERS)
++AC_SUBST(GEN_OBJECTS)
+ AC_SUBST(VERSION_OBJECTS)
+ AC_SUBST(SDLMAIN_OBJECTS)
+ AC_SUBST(SDLTEST_OBJECTS)
+@@ -3575,6 +3608,7 @@
+ AC_SUBST(BUILD_LDFLAGS)
+ AC_SUBST(EXTRA_LDFLAGS)
+ AC_SUBST(WINDRES)
++AC_SUBST(WAYLAND_SCANNER)
+ 
+ cat >Makefile.rules <<__EOF__
+ 
+@@ -3587,6 +3621,7 @@
+ $VERSION_DEPENDS
+ $SDLMAIN_DEPENDS
+ $SDLTEST_DEPENDS
++$WAYLAND_PROTOCOLS_DEPENDS
+ __EOF__
+ 
+ AC_CONFIG_FILES([
+diff -r 729eff9ee77a -r b326f93e1bc5 src/video/wayland/SDL_waylanddyn.h
+--- a/src/video/wayland/SDL_waylanddyn.h	Thu Sep 01 01:22:58 2016 -0700
++++ b/src/video/wayland/SDL_waylanddyn.h	Thu Jun 23 18:39:05 2016 +0800
+@@ -94,7 +94,8 @@
+ 
+ #endif /* SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC */
+ 
+-#include "wayland-client.h"
++#include "wayland-client-core.h"
++#include "wayland-client-protocol.h"
+ #include "wayland-egl.h"
+ 
+ #endif /* !defined _SDL_waylanddyn_h */
+# HG changeset patch
+# User Sam Lantinga <slouken@libsdl.org>
+# Date 1472718416 25200
+#      Thu Sep 01 01:26:56 2016 -0700
+# Node ID ee83e0b4a36f853ce1bcc23399549d438cb49896
+# Parent  b326f93e1bc5362cac076800cea06af5301fa3bd
+wayland: Add support for relative mouse mode, by Jonas Ådahl <jadahl@gmail.com>
+
+Generate the C protocol files from the protocol XML files installed by
+wayland-protocols, and use them to implement support for relative pointer
+motions and pointer locking.
+
+Note that at the time, the protocol is unstable and may change in the future.
+Any future breaking changes will, however, fail gracefully and result in no
+regressions compared to before this patch.
+
+diff -r b326f93e1bc5 -r ee83e0b4a36f configure
+--- a/configure	Thu Jun 23 18:39:05 2016 +0800
++++ b/configure	Thu Sep 01 01:26:56 2016 -0700
+@@ -18807,11 +18807,12 @@
+         if  test x$PKG_CONFIG != xno && \
+             test x$video_opengl_egl = xyes && \
+             test x$video_opengles_v2 = xyes; then
+-            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-egl wayland-cursor egl xkbcommon ; then
++            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-protocols wayland-egl wayland-cursor egl xkbcommon ; then
+                 WAYLAND_CFLAGS=`$PKG_CONFIG --cflags wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_LIBS=`$PKG_CONFIG --libs wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_SCANNER=`$PKG_CONFIG --variable=wayland_scanner wayland-scanner`
+                 WAYLAND_CORE_PROTOCOL_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-client`
++                WAYLAND_PROTOCOLS_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-protocols`
+                 video_wayland=yes
+             fi
+         fi
+@@ -18827,6 +18828,9 @@
+ $as_echo "#define SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH 1" >>confdefs.h
+ 
+             fi
++
++            WAYLAND_PROTOCOLS_UNSTABLE="relative-pointer-unstable-v1 pointer-constraints-unstable-v1"
++
+             SOURCES="$SOURCES $srcdir/src/video/wayland/*.c"
+             EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS -I\$(gen)"
+             # Check whether --enable-wayland-shared was given.
+@@ -23736,8 +23740,12 @@
+ if test x$video_wayland = xyes; then
+     WAYLAND_CORE_PROTOCOL_SOURCE='$(gen)/wayland-protocol.c'
+     WAYLAND_CORE_PROTOCOL_HEADER='$(gen)/wayland-client-protocol.h'
+-    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE"
+-    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER"
++    WAYLAND_PROTOCOLS_UNSTABLE_SOURCES=`echo $WAYLAND_PROTOCOLS_UNSTABLE |\
++        sed 's,[^ ]\+,\\$(gen)/&-protocol.c,g'`
++    WAYLAND_PROTOCOLS_UNSTABLE_HEADERS=`echo $WAYLAND_PROTOCOLS_UNSTABLE |\
++        sed 's,[^ ]\+,\\$(gen)/&-client-protocol.h,g'`
++    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE $WAYLAND_PROTOCOLS_UNSTABLE_SOURCES"
++    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER $WAYLAND_PROTOCOLS_UNSTABLE_HEADERS"
+ 
+     WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS="
+ $WAYLAND_CORE_PROTOCOL_SOURCE: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
+@@ -23753,10 +23761,30 @@
+ \$(objects)/`echo $WAYLAND_CORE_PROTOCOL_SOURCE | sed 's/\$(gen)\/\(.*\).c$/\1.lo/'`: $WAYLAND_CORE_PROTOCOL_SOURCE
+ 	\$(RUN_CMD_CC)\$(LIBTOOL) --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \$< -o \$@"
+ 
++    WAYLAND_PROTOCOLS_CLIENT_HEADER_UNSTABLE_DEPENDS=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([a-z\\-]\\+\\)-unstable-\\(v[0-9]\+\\)\$,\\$(gen)/&-client-protocol.h: $WAYLAND_PROTOCOLS_DIR/unstable/\1/&.xml\\\\
++	\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(gen)\\\\
++	\\$(RUN_CMD_GEN)\\$(WAYLAND_SCANNER) client-header \\$< \\$@," ; done`
++
++    WAYLAND_PROTOCOLS_CODE_UNSTABLE_DEPENDS=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([a-z\\-]\\+\\)-unstable-\\(v[0-9]\+\\)\$,\\$(gen)/&-protocol.c: $WAYLAND_PROTOCOLS_DIR/unstable/\1/&.xml\\\\
++	\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(gen)\\\\
++	\\$(RUN_CMD_GEN)\\$(WAYLAND_SCANNER) code \\$< \\$@," ; done`
++
++    WAYLAND_PROTOCOLS_OBJECTS_UNSTABLE=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([a-z\\-]\\+\\)-unstable-\\(v[0-9]\+\\)\$,\\\$(objects)/&-protocol.lo: \\$(gen)/&-protocol.c \\$(gen)/&-client-protocol.h\\\\
++	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@," ; done`
++
+     WAYLAND_PROTOCOLS_DEPENDS="
+ $WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS
+ $WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS
+ $WAYLAND_CORE_PROTOCOL_OBJECT
++$WAYLAND_PROTOCOLS_CLIENT_HEADER_UNSTABLE_DEPENDS
++$WAYLAND_PROTOCOLS_CODE_UNSTABLE_DEPENDS
++$WAYLAND_PROTOCOLS_OBJECTS_UNSTABLE
+ "
+ fi
+ 
+diff -r b326f93e1bc5 -r ee83e0b4a36f configure.in
+--- a/configure.in	Thu Jun 23 18:39:05 2016 +0800
++++ b/configure.in	Thu Sep 01 01:26:56 2016 -0700
+@@ -1201,11 +1201,12 @@
+         if  test x$PKG_CONFIG != xno && \
+             test x$video_opengl_egl = xyes && \
+             test x$video_opengles_v2 = xyes; then
+-            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-egl wayland-cursor egl xkbcommon ; then
++            if $PKG_CONFIG --exists wayland-client wayland-scanner wayland-protocols wayland-egl wayland-cursor egl xkbcommon ; then
+                 WAYLAND_CFLAGS=`$PKG_CONFIG --cflags wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_LIBS=`$PKG_CONFIG --libs wayland-client wayland-egl wayland-cursor xkbcommon`
+                 WAYLAND_SCANNER=`$PKG_CONFIG --variable=wayland_scanner wayland-scanner`
+                 WAYLAND_CORE_PROTOCOL_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-client`
++                WAYLAND_PROTOCOLS_DIR=`$PKG_CONFIG --variable=pkgdatadir wayland-protocols`
+                 video_wayland=yes
+             fi
+         fi
+@@ -1216,6 +1217,9 @@
+             if test x$enable_video_wayland_qt_touch = xyes; then
+                 AC_DEFINE(SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH, 1, [ ])
+             fi
++
++            WAYLAND_PROTOCOLS_UNSTABLE="relative-pointer-unstable-v1 pointer-constraints-unstable-v1"
++
+             SOURCES="$SOURCES $srcdir/src/video/wayland/*.c"
+             EXTRA_CFLAGS="$EXTRA_CFLAGS $WAYLAND_CFLAGS -I\$(gen)"
+             AC_ARG_ENABLE(wayland-shared,
+@@ -3486,8 +3490,12 @@
+ if test x$video_wayland = xyes; then
+     WAYLAND_CORE_PROTOCOL_SOURCE='$(gen)/wayland-protocol.c'
+     WAYLAND_CORE_PROTOCOL_HEADER='$(gen)/wayland-client-protocol.h'
+-    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE"
+-    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER"
++    WAYLAND_PROTOCOLS_UNSTABLE_SOURCES=`echo $WAYLAND_PROTOCOLS_UNSTABLE |\
++        sed 's,[[^ ]]\+,\\$(gen)/&-protocol.c,g'`
++    WAYLAND_PROTOCOLS_UNSTABLE_HEADERS=`echo $WAYLAND_PROTOCOLS_UNSTABLE |\
++        sed 's,[[^ ]]\+,\\$(gen)/&-client-protocol.h,g'`
++    GEN_SOURCES="$GEN_SOURCES $WAYLAND_CORE_PROTOCOL_SOURCE $WAYLAND_PROTOCOLS_UNSTABLE_SOURCES"
++    GEN_HEADERS="$GEN_HEADERS $WAYLAND_CORE_PROTOCOL_HEADER $WAYLAND_PROTOCOLS_UNSTABLE_HEADERS"
+ 
+     WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS="
+ $WAYLAND_CORE_PROTOCOL_SOURCE: $WAYLAND_CORE_PROTOCOL_DIR/wayland.xml
+@@ -3503,10 +3511,30 @@
+ \$(objects)/`echo $WAYLAND_CORE_PROTOCOL_SOURCE | sed 's/\$(gen)\/\(.*\).c$/\1.lo/'`: $WAYLAND_CORE_PROTOCOL_SOURCE
+ 	\$(RUN_CMD_CC)\$(LIBTOOL) --tag=CC --mode=compile \$(CC) \$(CFLAGS) \$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \$< -o \$@"
+ 
++    WAYLAND_PROTOCOLS_CLIENT_HEADER_UNSTABLE_DEPENDS=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([[a-z\\-]]\\+\\)-unstable-\\(v[[0-9]]\+\\)\$,\\$(gen)/&-client-protocol.h: $WAYLAND_PROTOCOLS_DIR/unstable/\1/&.xml\\\\
++	\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(gen)\\\\
++	\\$(RUN_CMD_GEN)\\$(WAYLAND_SCANNER) client-header \\$< \\$@," ; done`
++
++    WAYLAND_PROTOCOLS_CODE_UNSTABLE_DEPENDS=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([[a-z\\-]]\\+\\)-unstable-\\(v[[0-9]]\+\\)\$,\\$(gen)/&-protocol.c: $WAYLAND_PROTOCOLS_DIR/unstable/\1/&.xml\\\\
++	\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(gen)\\\\
++	\\$(RUN_CMD_GEN)\\$(WAYLAND_SCANNER) code \\$< \\$@," ; done`
++
++    WAYLAND_PROTOCOLS_OBJECTS_UNSTABLE=`for p in $WAYLAND_PROTOCOLS_UNSTABLE;\
++        do echo ; echo \$p | sed\
++        "s,^\\([[a-z\\-]]\\+\\)-unstable-\\(v[[0-9]]\+\\)\$,\\\$(objects)/&-protocol.lo: \\$(gen)/&-protocol.c \\$(gen)/&-client-protocol.h\\\\
++	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@," ; done`
++
+     WAYLAND_PROTOCOLS_DEPENDS="
+ $WAYLAND_CORE_PROTOCOL_SOURCE_DEPENDS
+ $WAYLAND_CORE_PROTOCOL_HEADER_DEPENDS
+ $WAYLAND_CORE_PROTOCOL_OBJECT
++$WAYLAND_PROTOCOLS_CLIENT_HEADER_UNSTABLE_DEPENDS
++$WAYLAND_PROTOCOLS_CODE_UNSTABLE_DEPENDS
++$WAYLAND_PROTOCOLS_OBJECTS_UNSTABLE
+ "
+ fi
+ 
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandevents.c
+--- a/src/video/wayland/SDL_waylandevents.c	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandevents.c	Thu Sep 01 01:26:56 2016 -0700
+@@ -25,6 +25,7 @@
+ 
+ #include "SDL_stdinc.h"
+ #include "SDL_assert.h"
++#include "SDL_log.h"
+ 
+ #include "../../events/SDL_sysevents.h"
+ #include "../../events/SDL_events_c.h"
+@@ -36,6 +37,9 @@
+ 
+ #include "SDL_waylanddyn.h"
+ 
++#include "pointer-constraints-unstable-v1-client-protocol.h"
++#include "relative-pointer-unstable-v1-client-protocol.h"
++
+ #include <linux/input.h>
+ #include <sys/select.h>
+ #include <sys/mman.h>
+@@ -48,13 +52,17 @@
+     struct wl_seat *seat;
+     struct wl_pointer *pointer;
+     struct wl_keyboard *keyboard;
++    struct zwp_relative_pointer_v1 *relative_pointer;
+     SDL_WindowData *pointer_focus;
+     SDL_WindowData *keyboard_focus;
+ 
+     /* Last motion location */
+     wl_fixed_t sx_w;
+     wl_fixed_t sy_w;
+-    
++
++    double dx_frac;
++    double dy_frac;
++
+     struct {
+         struct xkb_keymap *keymap;
+         struct xkb_state *state;
+@@ -170,10 +178,9 @@
+ }
+ 
+ static void
+-pointer_handle_button(void *data, struct wl_pointer *pointer, uint32_t serial,
+-                      uint32_t time, uint32_t button, uint32_t state_w)
++pointer_handle_button_common(struct SDL_WaylandInput *input, uint32_t serial,
++                             uint32_t time, uint32_t button, uint32_t state_w)
+ {
+-    struct SDL_WaylandInput *input = data;
+     SDL_WindowData *window = input->pointer_focus;
+     enum wl_pointer_button_state state = state_w;
+     uint32_t sdl_button;
+@@ -182,7 +189,7 @@
+         switch (button) {
+             case BTN_LEFT:
+                 sdl_button = SDL_BUTTON_LEFT;
+-                if (ProcessHitTest(data, serial)) {
++                if (ProcessHitTest(input, serial)) {
+                     return;  /* don't pass this event on to app. */
+                 }
+                 break;
+@@ -208,10 +215,18 @@
+ }
+ 
+ static void
+-pointer_handle_axis(void *data, struct wl_pointer *pointer,
+-                    uint32_t time, uint32_t axis, wl_fixed_t value)
++pointer_handle_button(void *data, struct wl_pointer *pointer, uint32_t serial,
++                      uint32_t time, uint32_t button, uint32_t state_w)
+ {
+     struct SDL_WaylandInput *input = data;
++
++    pointer_handle_button_common(input, serial, time, button, state_w);
++}
++
++static void
++pointer_handle_axis_common(struct SDL_WaylandInput *input,
++                           uint32_t time, uint32_t axis, wl_fixed_t value)
++{
+     SDL_WindowData *window = input->pointer_focus;
+     enum wl_pointer_axis a = axis;
+     int x, y;
+@@ -234,6 +249,15 @@
+     }
+ }
+ 
++static void
++pointer_handle_axis(void *data, struct wl_pointer *pointer,
++                    uint32_t time, uint32_t axis, wl_fixed_t value)
++{
++    struct SDL_WaylandInput *input = data;
++
++    pointer_handle_axis_common(input, time, axis, value);
++}
++
+ static const struct wl_pointer_listener pointer_listener = {
+     pointer_handle_enter,
+     pointer_handle_leave,
+@@ -453,6 +477,164 @@
+     d->input = NULL;
+ }
+ 
++void Wayland_display_add_relative_pointer_manager(SDL_VideoData *d, uint32_t id)
++{
++    d->relative_pointer_manager =
++        wl_registry_bind(d->registry, id,
++                         &zwp_relative_pointer_manager_v1_interface, 1);
++}
++
++void Wayland_display_destroy_relative_pointer_manager(SDL_VideoData *d)
++{
++    if (d->relative_pointer_manager)
++        zwp_relative_pointer_manager_v1_destroy(d->relative_pointer_manager);
++}
++
++void Wayland_display_add_pointer_constraints(SDL_VideoData *d, uint32_t id)
++{
++    d->pointer_constraints =
++        wl_registry_bind(d->registry, id,
++                         &zwp_pointer_constraints_v1_interface, 1);
++}
++
++void Wayland_display_destroy_pointer_constraints(SDL_VideoData *d)
++{
++    if (d->pointer_constraints)
++        zwp_pointer_constraints_v1_destroy(d->pointer_constraints);
++}
++
++static void
++relative_pointer_handle_relative_motion(void *data,
++                                        struct zwp_relative_pointer_v1 *pointer,
++                                        uint32_t time_hi,
++                                        uint32_t time_lo,
++                                        wl_fixed_t dx_w,
++                                        wl_fixed_t dy_w,
++                                        wl_fixed_t dx_unaccel_w,
++                                        wl_fixed_t dy_unaccel_w)
++{
++    struct SDL_WaylandInput *input = data;
++    SDL_VideoData *d = input->display;
++    SDL_WindowData *window = input->pointer_focus;
++    double dx_unaccel;
++    double dy_unaccel;
++    double dx;
++    double dy;
++
++    dx_unaccel = wl_fixed_to_double(dx_unaccel_w);
++    dy_unaccel = wl_fixed_to_double(dy_unaccel_w);
++
++    /* Add left over fraction from last event. */
++    dx_unaccel += input->dx_frac;
++    dy_unaccel += input->dy_frac;
++
++    input->dx_frac = modf(dx_unaccel, &dx);
++    input->dy_frac = modf(dy_unaccel, &dy);
++
++    if (input->pointer_focus && d->relative_mouse_mode) {
++        SDL_SendMouseMotion(window->sdlwindow, 0, 1, (int)dx, (int)dy);
++    }
++}
++
++static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
++    relative_pointer_handle_relative_motion,
++};
++
++static void
++locked_pointer_locked(void *data,
++                      struct zwp_locked_pointer_v1 *locked_pointer)
++{
++}
++
++static void
++locked_pointer_unlocked(void *data,
++                        struct zwp_locked_pointer_v1 *locked_pointer)
++{
++}
++
++static const struct zwp_locked_pointer_v1_listener locked_pointer_listener = {
++    locked_pointer_locked,
++    locked_pointer_unlocked,
++};
++
++static void
++lock_pointer_to_window(SDL_Window *window,
++                       struct SDL_WaylandInput *input)
++{
++    SDL_WindowData *w = window->driverdata;
++    SDL_VideoData *d = input->display;
++    struct zwp_locked_pointer_v1 *locked_pointer;
++
++    if (w->locked_pointer)
++        return;
++
++    locked_pointer =
++        zwp_pointer_constraints_v1_lock_pointer(d->pointer_constraints,
++                                                w->surface,
++                                                input->pointer,
++                                                NULL,
++                                                ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_PERSISTENT);
++    zwp_locked_pointer_v1_add_listener(locked_pointer,
++                                       &locked_pointer_listener,
++                                       window);
++
++    w->locked_pointer = locked_pointer;
++}
++
++int Wayland_input_lock_pointer(struct SDL_WaylandInput *input)
++{
++    SDL_VideoDevice *vd = SDL_GetVideoDevice();
++    SDL_VideoData *d = input->display;
++    SDL_Window *window;
++    struct zwp_relative_pointer_v1 *relative_pointer;
++
++    if (!d->relative_pointer_manager)
++        return -1;
++
++    if (!d->pointer_constraints)
++        return -1;
++
++    if (!input->relative_pointer) {
++        relative_pointer =
++            zwp_relative_pointer_manager_v1_get_relative_pointer(
++                d->relative_pointer_manager,
++                input->pointer);
++        zwp_relative_pointer_v1_add_listener(relative_pointer,
++                                             &relative_pointer_listener,
++                                             input);
++        input->relative_pointer = relative_pointer;
++    }
++
++    for (window = vd->windows; window; window = window->next)
++        lock_pointer_to_window(window, input);
++
++    d->relative_mouse_mode = 1;
++
++    return 0;
++}
++
++int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input)
++{
++    SDL_VideoDevice *vd = SDL_GetVideoDevice();
++    SDL_VideoData *d = input->display;
++    SDL_Window *window;
++    SDL_WindowData *w;
++
++    for (window = vd->windows; window; window = window->next) {
++        w = window->driverdata;
++        if (w->locked_pointer)
++            zwp_locked_pointer_v1_destroy(w->locked_pointer);
++        w->locked_pointer = NULL;
++    }
++
++    zwp_relative_pointer_v1_destroy(input->relative_pointer);
++    input->relative_pointer = NULL;
++
++    d->relative_mouse_mode = 0;
++
++    return 0;
++}
++
+ #endif /* SDL_VIDEO_DRIVER_WAYLAND */
+ 
+ /* vi: set ts=4 sw=4 expandtab: */
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandevents_c.h
+--- a/src/video/wayland/SDL_waylandevents_c.h	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandevents_c.h	Thu Sep 01 01:26:56 2016 -0700
+@@ -32,6 +32,15 @@
+ extern void Wayland_display_add_input(SDL_VideoData *d, uint32_t id);
+ extern void Wayland_display_destroy_input(SDL_VideoData *d);
+ 
++extern void Wayland_display_add_pointer_constraints(SDL_VideoData *d, uint32_t id);
++extern void Wayland_display_destroy_pointer_constraints(SDL_VideoData *d);
++
++extern int Wayland_input_lock_pointer(struct SDL_WaylandInput *input);
++extern int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input);
++
++extern void Wayland_display_add_relative_pointer_manager(SDL_VideoData *d, uint32_t id);
++extern void Wayland_display_destroy_relative_pointer_manager(SDL_VideoData *d);
++
+ #endif /* _SDL_waylandevents_h */
+ 
+ /* vi: set ts=4 sw=4 expandtab: */
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandmouse.c
+--- a/src/video/wayland/SDL_waylandmouse.c	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandmouse.c	Thu Sep 01 01:26:56 2016 -0700
+@@ -365,7 +365,13 @@
+ static int
+ Wayland_SetRelativeMouseMode(SDL_bool enabled)
+ {
+-    return SDL_Unsupported();
++    SDL_VideoDevice *vd = SDL_GetVideoDevice();
++    SDL_VideoData *data = (SDL_VideoData *) vd->driverdata;
++
++    if (enabled)
++        return Wayland_input_lock_pointer(data->input);
++    else
++        return Wayland_input_unlock_pointer(data->input);
+ }
+ 
+ void
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandvideo.c
+--- a/src/video/wayland/SDL_waylandvideo.c	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandvideo.c	Thu Sep 01 01:26:56 2016 -0700
+@@ -305,7 +305,10 @@
+     } else if (strcmp(interface, "wl_shm") == 0) {
+         d->shm = wl_registry_bind(registry, id, &wl_shm_interface, 1);
+         d->cursor_theme = WAYLAND_wl_cursor_theme_load(NULL, 32, d->shm);
+-
++    } else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0) {
++        Wayland_display_add_relative_pointer_manager(d, id);
++    } else if (strcmp(interface, "zwp_pointer_constraints_v1") == 0) {
++        Wayland_display_add_pointer_constraints(d, id);
+ #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
+     } else if (strcmp(interface, "qt_touch_extension") == 0) {
+         Wayland_touch_create(d, id);
+@@ -395,6 +398,8 @@
+     }
+ 
+     Wayland_display_destroy_input(data);
++    Wayland_display_destroy_pointer_constraints(data);
++    Wayland_display_destroy_relative_pointer_manager(data);
+ 
+     if (data->xkb_context) {
+         WAYLAND_xkb_context_unref(data->xkb_context);
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandvideo.h
+--- a/src/video/wayland/SDL_waylandvideo.h	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandvideo.h	Thu Sep 01 01:26:56 2016 -0700
+@@ -44,6 +44,8 @@
+     struct wl_cursor_theme *cursor_theme;
+     struct wl_pointer *pointer;
+     struct wl_shell *shell;
++    struct zwp_relative_pointer_manager_v1 *relative_pointer_manager;
++    struct zwp_pointer_constraints_v1 *pointer_constraints;
+ 
+     EGLDisplay edpy;
+     EGLContext context;
+@@ -59,6 +61,8 @@
+ #endif /* SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
+ 
+     char *classname;
++
++    int relative_mouse_mode;
+ } SDL_VideoData;
+ 
+ #endif /* _SDL_waylandvideo_h */
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandwindow.c
+--- a/src/video/wayland/SDL_waylandwindow.c	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandwindow.c	Thu Sep 01 01:26:56 2016 -0700
+@@ -26,6 +26,7 @@
+ #include "../SDL_sysvideo.h"
+ #include "../../events/SDL_windowevents_c.h"
+ #include "../SDL_egl_c.h"
++#include "SDL_waylandevents_c.h"
+ #include "SDL_waylandwindow.h"
+ #include "SDL_waylandvideo.h"
+ #include "SDL_waylandtouch.h"
+@@ -215,6 +216,10 @@
+     wl_surface_set_opaque_region(data->surface, region);
+     wl_region_destroy(region);
+ 
++    if (c->relative_mouse_mode) {
++        Wayland_input_lock_pointer(c->input);
++    }
++
+     WAYLAND_wl_display_flush(c->display);
+ 
+     return 0;
+diff -r b326f93e1bc5 -r ee83e0b4a36f src/video/wayland/SDL_waylandwindow.h
+--- a/src/video/wayland/SDL_waylandwindow.h	Thu Jun 23 18:39:05 2016 +0800
++++ b/src/video/wayland/SDL_waylandwindow.h	Thu Sep 01 01:26:56 2016 -0700
+@@ -39,6 +39,7 @@
+     struct wl_egl_window *egl_window;
+     struct SDL_WaylandInput *keyboard_device;
+     EGLSurface egl_surface;
++    struct zwp_locked_pointer_v1 *locked_pointer;
+ 
+ #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
+     struct qt_extended_surface *extended_surface;
