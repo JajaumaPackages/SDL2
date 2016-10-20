@@ -1,6 +1,6 @@
 Name:           SDL2
-Version:        2.0.4
-Release:        9%{?dist}
+Version:        2.0.5
+Release:        1%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -9,11 +9,6 @@ Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 
 Patch0:         multilib.patch
-# Wayland fixes backported from upstream
-Patch1:         SDL2-wayland-fixes.patch
-# https://bugzilla.libsdl.org/show_bug.cgi?id=3295
-# https://bugzilla.redhat.com/show_bug.cgi?id=1366868
-Patch2:         bug_822210_fix_sdl2-config.cmake_whitespace.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -69,9 +64,7 @@ Summary:	Static libraries for SDL2
 Static libraries for SDL2.
 
 %prep
-%setup -q
-%patch0 -p1 -b .multilib
-%patch1 -p1 -b .wayland-fixes
+%autosetup -p1
 # Compilation without ESD
 sed -i -e 's/.*AM_PATH_ESD.*//' configure.in
 sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDITS.txt README-SDL.txt
@@ -124,6 +117,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Thu Oct 20 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.5-1
+- Update to 2.0.5 (RHBZ #1387238)
+
 * Mon Sep 05 2016 Kalev Lember <klember@redhat.com> - 2.0.4-9
 - Backport Wayland fixes from upstream
 
