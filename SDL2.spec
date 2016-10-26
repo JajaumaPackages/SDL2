@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.5
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -9,6 +9,8 @@ Source0:        http://www.libsdl.org/release/%{name}-%{version}.tar.gz
 Source1:        SDL_config.h
 
 Patch0:         multilib.patch
+# https://hg.libsdl.org/SDL/rev/5184186d4366
+Patch1:         %{name}-2.0.5-ppc.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -117,6 +119,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Wed Oct 26 2016 Dan Horák <dan[at]danny.cz> - 2.0.5-2
+- fix FTBFS on ppc64/ppc64le
+
 * Thu Oct 20 2016 Igor Gnatenko <i.gnatenko.brain@gmail.com> - 2.0.5-1
 - Update to 2.0.5 (RHBZ #1387238)
 
