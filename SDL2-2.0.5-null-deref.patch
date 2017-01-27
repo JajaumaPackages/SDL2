@@ -1,0 +1,45 @@
+
+# HG changeset patch
+# User Sam Lantinga <slouken@libsdl.org>
+# Date 1477183983 25200
+# Node ID fbf9b0e3589a1f88e2eefbbeb3b632e2da795fde
+# Parent  5184186d4366169617b434f5b71c618a7035cde4
+Fixed NULL pointer dereference, thanks Ozkan Sezer
+
+diff -r 5184186d4366 -r fbf9b0e3589a src/video/SDL_blit_N.c
+--- a/src/video/SDL_blit_N.c	Sat Oct 22 11:01:55 2016 -0700
++++ b/src/video/SDL_blit_N.c	Sat Oct 22 17:53:03 2016 -0700
+@@ -125,11 +125,7 @@
+                                                        0x0C);
+     vector unsigned char vswiz;
+     vector unsigned int srcvec;
+-#define RESHIFT(X) (3 - ((X) >> 3))
+-    Uint32 rmask = RESHIFT(srcfmt->Rshift) << (dstfmt->Rshift);
+-    Uint32 gmask = RESHIFT(srcfmt->Gshift) << (dstfmt->Gshift);
+-    Uint32 bmask = RESHIFT(srcfmt->Bshift) << (dstfmt->Bshift);
+-    Uint32 amask;
++    Uint32 rmask, gmask, bmask, amask;
+ 
+     if (!srcfmt) {
+         srcfmt = &default_pixel_format;
+@@ -138,6 +134,11 @@
+         dstfmt = &default_pixel_format;
+     }
+ 
++#define RESHIFT(X) (3 - ((X) >> 3))
++    rmask = RESHIFT(srcfmt->Rshift) << (dstfmt->Rshift);
++    gmask = RESHIFT(srcfmt->Gshift) << (dstfmt->Gshift);
++    bmask = RESHIFT(srcfmt->Bshift) << (dstfmt->Bshift);
++
+     /* Use zero for alpha if either surface doesn't have alpha */
+     if (dstfmt->Amask) {
+         amask =
+@@ -149,6 +150,7 @@
+                           0xFFFFFFFF);
+     }
+ #undef RESHIFT
++
+     ((unsigned int *) (char *) &srcvec)[0] = (rmask | gmask | bmask | amask);
+     vswiz = vec_add(plus, (vector unsigned char) vec_splat(srcvec, 0));
+     return (vswiz);
+

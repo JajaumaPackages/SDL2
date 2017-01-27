@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.5
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -11,6 +11,8 @@ Source1:        SDL_config.h
 Patch0:         multilib.patch
 # https://hg.libsdl.org/SDL/rev/5184186d4366
 Patch1:         %{name}-2.0.5-ppc.patch
+# https://hg.libsdl.org/SDL/rev/fbf9b0e3589a
+Patch2:         %{name}-2.0.5-null-deref.patch
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  audiofile-devel
@@ -119,6 +121,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Fri Jan 27 2017 Igor Gnatenko <ignatenko@redhat.com> - 2.0.5-3
+- Fix NULL dereference (RHBZ #1416945)
+
 * Wed Oct 26 2016 Dan Horák <dan[at]danny.cz> - 2.0.5-2
 - fix FTBFS on ppc64/ppc64le
 
