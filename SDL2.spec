@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.5
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -121,6 +121,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.0.5-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+
 * Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.0.5-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
 
