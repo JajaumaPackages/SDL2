@@ -1,6 +1,6 @@
 Name:           SDL2
 Version:        2.0.5
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        A cross-platform multimedia library
 
 License:        zlib and MIT
@@ -36,6 +36,7 @@ BuildRequires:  pkgconfig(libpulse-simple)
 BuildRequires:  pkgconfig(dbus-1)
 # IBus
 BuildRequires:  pkgconfig(ibus-1.0)
+%if 0%{?fedora} || 0%{?rhel} > 7
 # Wayland
 BuildRequires:  pkgconfig(wayland-client)
 BuildRequires:  pkgconfig(wayland-egl)
@@ -43,6 +44,7 @@ BuildRequires:  pkgconfig(wayland-cursor)
 BuildRequires:  pkgconfig(wayland-protocols)
 BuildRequires:  pkgconfig(wayland-scanner)
 BuildRequires:  pkgconfig(xkbcommon)
+%endif
 
 %description
 Simple DirectMedia Layer (SDL) is a cross-platform multimedia library designed
@@ -81,7 +83,9 @@ sed -i -e 's/\r//g' TODO.txt README.txt WhatsNew.txt BUGS.txt COPYING.txt CREDIT
     --disable-nas \
     --enable-pulseaudio-shared \
     --enable-alsa \
+%if 0%{?fedora} || 0%{?rhel} > 7
     --enable-video-wayland \
+%endif
     --disable-rpath
 make %{?_smp_mflags}
 
@@ -121,6 +125,9 @@ rm -f %{buildroot}%{_libdir}/*.la
 %{_libdir}/lib*.a
 
 %changelog
+* Sun Sep 03 2017 Jajauma's Packages <jajauma@yandex.ru> - 2.0.5-7
+- Skip Wayland on RHEL7
+
 * Wed Aug 02 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.0.5-6
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
 
